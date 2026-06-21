@@ -1,0 +1,122 @@
+name: License check (reusable)
+
+# Reusable license workflow. Runs Cybozu-SD/kep-license-manager-action once per
+# package, IN ORDER, inside a SINGLE job. Order matters: each package pulls the
+# branch, commits its own LICENSE, and pushes; the LAST entry also combines all
+# LICENSE files. A single sequential job avoids git-push races between packages.
+#
+# YAML can't loop `uses:` steps, so packages are filled into fixed "slots".
+# A caller sends a JSON array (max 8 entries) and marks the LAST entry with
+# "trigger_license_combination": "true".
+#
+# Caller example (.github/workflows/check-license.yml):
+#   jobs:
+#     license-check:
+#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/license-check.yml@main
+#       permissions:
+#         id-token: write
+#         contents: write
+#       with:
+#         licenses: |
+#           [
+#             { "working_directory": "./packages/customization-deployment-request", "license_filename": "LICENSE-customization-deployment-request" },
+#             { "working_directory": "./packages/customization-template-master",     "license_filename": "LICENSE-customization-template-master", "trigger_license_combination": "true" }
+#           ]
+
+on:
+  workflow_call:
+    inputs:
+      licenses:
+        description: >-
+          JSON array (max 8) of { working_directory, license_filename,
+          trigger_license_combination? }. Mark only the LAST entry with
+          trigger_license_combination "true".
+        required: true
+        type: string
+
+jobs:
+  license-check:
+    name: Check licenses
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
+
+      # Slots run in order inside this one job. Each slot is skipped when the
+      # JSON array has no entry at that index, so repos with fewer packages just
+      # use fewer slots. If a repo ever needs more than 8 packages, add slots here.
+      - name: Check license (slot 0)
+        if: ${{ fromJSON(inputs.licenses)[0] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[0].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[0].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[0].trigger_license_combination || '' }}
+
+      - name: Check license (slot 1)
+        if: ${{ fromJSON(inputs.licenses)[1] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[1].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[1].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[1].trigger_license_combination || '' }}
+
+      - name: Check license (slot 2)
+        if: ${{ fromJSON(inputs.licenses)[2] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[2].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[2].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[2].trigger_license_combination || '' }}
+
+      - name: Check license (slot 3)
+        if: ${{ fromJSON(inputs.licenses)[3] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[3].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[3].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[3].trigger_license_combination || '' }}
+
+      - name: Check license (slot 4)
+        if: ${{ fromJSON(inputs.licenses)[4] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[4].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[4].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[4].trigger_license_combination || '' }}
+
+      - name: Check license (slot 5)
+        if: ${{ fromJSON(inputs.licenses)[5] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[5].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[5].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[5].trigger_license_combination || '' }}
+
+      - name: Check license (slot 6)
+        if: ${{ fromJSON(inputs.licenses)[6] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[6].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[6].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[6].trigger_license_combination || '' }}
+
+      - name: Check license (slot 7)
+        if: ${{ fromJSON(inputs.licenses)[7] != null }}
+        uses: Cybozu-SD/kep-license-manager-action@main
+        with:
+          working_directory: ${{ fromJSON(inputs.licenses)[7].working_directory }}
+          is_pull_needed: 'true'
+          license_filename: ${{ fromJSON(inputs.licenses)[7].license_filename }}
+          trigger_license_combination: ${{ fromJSON(inputs.licenses)[7].trigger_license_combination || '' }}

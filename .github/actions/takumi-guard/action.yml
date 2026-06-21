@@ -1,0 +1,15 @@
+name: Takumi Guard
+description: Wrapper for Cybozu-SD/takumi-guard-action — edit the ref here to update every kep-ci workflow at once.
+
+inputs:
+  working-directory:
+    description: Directory where .npmrc will be written. Must match pnpm's project root (dir containing package.json).
+    required: false
+    default: "."
+
+runs:
+  using: composite
+  steps:
+    - uses: Cybozu-SD/takumi-guard-action@main
+      with:
+        working-directory: ${{ inputs.working-directory }}

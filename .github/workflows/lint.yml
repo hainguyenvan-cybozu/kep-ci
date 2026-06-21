@@ -1,0 +1,96 @@
+name: Lint (reusable)
+
+# Reusable lint workflow. A caller repo sends its package list as JSON and this
+# runs lint (+ optional CSS format check) for each package in a matrix.
+#
+# Caller example (.github/workflows/commit.yml):
+#   jobs:
+#     lint:
+#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/lint.yml@main
+#       permissions:
+#         id-token: write
+#         contents: read
+#       with:
+#         packages: |
+#           [
+#             { "package": "packages/customization-deployment-request", "run_lint": true, "run_css": true },
+#             { "package": "packages/customization-template-master",     "run_lint": true, "run_css": true }
+#           ]
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: JSON array of { package, run_lint, run_css } objects. Each repo defines its own list.
+        required: true
+        type: string
+      node-version:
+        description: Node.js version.
+        required: false
+        type: string
+        default: "24.14.1"
+      pnpm-version:
+        description: pnpm version.
+        required: false
+        type: string
+        default: "10.28.0"
+      max-parallel:
+        description: Max matrix jobs to run at once.
+        required: false
+        type: number
+        default: 2
+      continue-on-error:
+        description: When true, a failing package does not fail the whole job (keeps current behavior).
+        required: false
+        type: boolean
+        default: true
+
+jobs:
+  run-lint:
+    name: Run lint for packages
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ inputs.continue-on-error }}
+    permissions:
+      id-token: write
+      contents: read
+
+    strategy:
+      max-parallel: ${{ inputs.max-parallel }}
+      matrix:
+        include: ${{ fromJSON(inputs.packages) }}
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Setup Takumi Guard
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
+        with:
+          working-directory: ${{ matrix.package }}
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v6
+        with:
+          version: ${{ inputs.pnpm-version }}
+
+      - name: Install packages
+        run: pnpm install --frozen-lockfile
+        working-directory: ${{ matrix.package }}
+
+      - name: Check CSS Formatting
+        if: matrix.run_css
+        run: |
+          echo "Checking CSS formatting ${{ matrix.package }}..."
+          pnpm run css-format-check
+        working-directory: ${{ matrix.package }}
+
+      - name: Run Lint
+        if: matrix.run_lint
+        run: |
+          echo "Linting ${{ matrix.package }}..."
+          pnpm run lint
+        working-directory: ${{ matrix.package }}
