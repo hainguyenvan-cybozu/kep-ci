@@ -1,0 +1,121 @@
+name: Check before releasing (reusable)
+
+# Reusable "is this PR ready to release?" check. Runs the shared scripts that
+# live ONCE in this repo (.github/scripts), so caller repos no longer copy them.
+#
+# The job checks out two things:
+#   1. the CALLER repo (so package.json and repo files are present, cwd = caller)
+#   2. this repo's scripts into ./.kep-ci (so `node .kep-ci/.github/scripts/X.js` works)
+#
+# Caller must pass `secrets: inherit` so the scripts get the org secrets/vars.
+#
+# Caller example (.github/workflows/check-before-releasing.yml):
+#   jobs:
+#     check:
+#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/check-before-releasing.yml@main
+#       secrets: inherit
+#       permissions:
+#         contents: read
+#         actions: write
+#         pull-requests: write
+#       with:
+#         version-package-path: "./packages/customization-deployment-request/package.json"
+#         check-common-prs: false   # app-analysis sets true
+
+on:
+  workflow_call:
+    inputs:
+      version-package-path:
+        description: Path to the package.json whose version is the upcoming release version.
+        required: true
+        type: string
+      check-common-prs:
+        description: When true, also run the KEP common-PRs check (app-analysis needs this).
+        required: false
+        type: boolean
+        default: false
+      node-version:
+        description: Node.js version.
+        required: false
+        type: string
+        default: "24.14.1"
+      kep-ci-ref:
+        description: Which ref of kep-ci to read the shared scripts from.
+        required: false
+        type: string
+        default: "main"
+
+jobs:
+  check:
+    name: Check tasks/backlogs status before releasing
+    runs-on: self-hosted
+    steps:
+      - name: Checkout caller repo
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Checkout kep-ci scripts
+        uses: actions/checkout@v6
+        with:
+          repository: hainguyenvan-cybozu/kep-ci
+          ref: ${{ inputs.kep-ci-ref }}
+          path: .kep-ci
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Setup GitHub CLI
+        if: ${{ inputs.check-common-prs }}
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+
+      - name: Check KEP common pull requests
+        if: ${{ inputs.check-common-prs }}
+        run: node .kep-ci/.github/scripts/check-kep-common-prs.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO_OWNER: ${{ github.repository_owner }}
+
+      - name: Get latest release
+        run: |
+          UPCOMING_RELEASE_VERSION=$(node -p "require('${{ inputs.version-package-path }}').version")
+          echo "UPCOMING_RELEASE_VERSION=v$UPCOMING_RELEASE_VERSION" >> "$GITHUB_ENV"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check SSR tasks status
+        id: check_tasks_status
+        run: node .kep-ci/.github/scripts/check-tasks-status.js
+        env:
+          REPO_NAME: ${{ github.repository }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH: ${{ github.ref_name }}
+          UPCOMING_RELEASE_VERSION: ${{ env.UPCOMING_RELEASE_VERSION }}
+
+          # user defined variables
+          KEP_PROJECT_ID: ${{ vars.KEP_PROJECT_ID }}
+          KINTONE_SUBDOMAIN: ${{ vars.KINTONE_SUBDOMAIN }}
+          KEP_PLUGINS_MANAGEMENT_APP_ID: ${{ vars.KEP_PLUGINS_MANAGEMENT_APP_ID }}
+          KEP_PLUGINS_MANAGEMENT_RECORD_NUMBER: ${{ vars.KEP_PLUGINS_MANAGEMENT_RECORD_NUMBER }}
+          KEP_SSR_APP_ID: ${{ vars.KEP_SSR_APP_ID }}
+          KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
+          KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
+
+      - name: Generate GitHub App Token For Querying Project's Backlogs
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
+
+      - name: Check Backlogs Status
+        run: node .kep-ci/.github/scripts/check-backlogs-status.js
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          REPO_OWNER: ${{ github.repository_owner }}
+          REPO_NAME: ${{ github.repository }}
+          KEP_PROJECT_ID: ${{ vars.KEP_PROJECT_ID }}
+          TASK_LIST: ${{ steps.check_tasks_status.outputs.task_list }}

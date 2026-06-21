@@ -13,6 +13,8 @@ that every repo calls.
 | --- | --- |
 | `.github/workflows/lint.yml` | Reusable lint (+ optional CSS format check), one matrix job per package. |
 | `.github/workflows/license-check.yml` | Reusable license check, single sequential job (order matters). |
+| `.github/workflows/check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared scripts. |
+| `.github/scripts/` | Shared Node scripts (no npm deps) used by `check-before-releasing.yml`. Live here ONCE instead of being copied per repo. |
 | `.github/actions/takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |
 
 ## How a repo uses it
@@ -61,6 +63,31 @@ jobs:
 ```
 
 Mark only the **last** license entry with `"trigger_license_combination": "true"`.
+
+### Pre-release check — `.github/workflows/check-before-releasing.yml`
+
+```yaml
+name: Check tasks/backlogs status before releasing
+on:
+  pull_request:
+    branches: [main, develop]
+jobs:
+  check:
+    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/check-before-releasing.yml@main
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: write
+      pull-requests: write
+    with:
+      version-package-path: "./packages/customization-deployment-request/package.json"
+      check-common-prs: false   # app-analysis sets true
+```
+
+The shared scripts (`check-tasks-status.js`, `check-backlogs-status.js`,
+`check-kep-common-prs.js`, `check-license-versions.js`) live in
+`.github/scripts/` here. The workflow checks out this repo into `.kep-ci/` at
+runtime to run them, so caller repos can delete their own copies.
 
 ## Versioning
 
