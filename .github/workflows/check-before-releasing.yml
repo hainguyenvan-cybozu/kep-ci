@@ -44,6 +44,16 @@ on:
         required: false
         type: string
         default: "main"
+    secrets:
+      # Declared explicitly (not `inherit`) so they cross the repo/org boundary:
+      # org secrets are resolved in the caller's context and passed in by value.
+      # `secrets: inherit` does NOT forward org secrets to a workflow outside the org.
+      KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN:
+        required: true
+      KEP_SSR_APP_API_TOKEN:
+        required: true
+      KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY:
+        required: true
 
 jobs:
   check:

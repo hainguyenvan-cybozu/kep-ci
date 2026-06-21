@@ -74,7 +74,6 @@ on:
 jobs:
   check:
     uses: hainguyenvan-cybozu/kep-ci/.github/workflows/check-before-releasing.yml@main
-    secrets: inherit
     permissions:
       contents: read
       actions: write
@@ -82,7 +81,16 @@ jobs:
     with:
       version-package-path: "./packages/customization-deployment-request/package.json"
       check-common-prs: false   # app-analysis sets true
+    secrets:
+      KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
+      KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
+      KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
 ```
+
+> Secrets are passed explicitly (not `inherit`): org secrets do not flow via
+> `inherit` to a reusable workflow that lives outside the org. Once kep-ci moves
+> into `Cybozu-SD`, `secrets: inherit` would also work — explicit still works and
+> is clearer.
 
 The shared scripts (`check-tasks-status.js`, `check-backlogs-status.js`,
 `check-kep-common-prs.js`, `check-license-versions.js`) live in
