@@ -1,0 +1,64 @@
+name: Verify release base (reusable)
+
+# Reusable guard: the release branch must point at the exact HEAD of the base
+# branch (default main). Stops releases from outdated or wrong commits.
+#
+# Caller gates this on branch creation itself, e.g.:
+#   jobs:
+#     verify-base:
+#       if: ${{ github.event.created == true }}
+#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/verify-release-base.yml@main
+#       with:
+#         base-branch: main
+
+on:
+  workflow_call:
+    inputs:
+      base-branch:
+        description: Branch the release branch must match (HEAD-to-HEAD).
+        required: false
+        type: string
+        default: "main"
+
+jobs:
+  verify-base:
+    name: Verify release branch starts from base
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Verify base branch (must equal current HEAD)
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE="${{ inputs.base-branch }}"
+          REL="${{ github.ref_name }}"
+
+          # Fetch latest refs from remote without tags
+          git fetch --no-tags --prune origin +refs/heads/*:refs/remotes/origin/*
+
+          # Get commit hashes for both release and base branches
+          REL_HEAD=$(git rev-parse "origin/$REL")
+          BASE_HEAD=$(git rev-parse "origin/$BASE")
+
+          echo "origin/$REL  = $REL_HEAD"
+          echo "origin/$BASE = $BASE_HEAD"
+
+          # Fail if release branch doesn't match base branch HEAD
+          if [[ "$REL_HEAD" != "$BASE_HEAD" ]]; then
+            echo "$REL was NOT created exactly from HEAD of $BASE"
+            exit 1
+          fi
+
+          echo "$REL was created exactly from HEAD of $BASE"
+
+      - name: Echo trigger info (debug)
+        run: |
+          echo "event_name=${{ github.event_name }}"
+          echo "ref=${{ github.ref }}"
+          echo "ref_name=${{ github.ref_name }}"

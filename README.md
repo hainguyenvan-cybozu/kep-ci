@@ -14,6 +14,8 @@ that every repo calls.
 | `.github/workflows/lint.yml` | Reusable lint (+ optional CSS format check), one matrix job per package. |
 | `.github/workflows/license-check.yml` | Reusable license check, single sequential job (order matters). |
 | `.github/workflows/check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared scripts. |
+| `.github/workflows/verify-release-base.yml` | Reusable guard: release branch must equal base-branch HEAD. |
+| `.github/workflows/create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. Build/collect stays per repo. |
 | `.github/scripts/` | Shared Node scripts (no npm deps) used by `check-before-releasing.yml`. Live here ONCE instead of being copied per repo. |
 | `.github/actions/takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |
 

@@ -1,0 +1,132 @@
+name: Create release (reusable)
+
+# Reusable final release step. Downloads the ZIP artifacts that the caller's
+# build job uploaded (same run), reads release notes, and publishes a GitHub
+# pre-release. The repo-specific build/collect stays in the caller.
+#
+# Caller example (last job of auto-release.yml):
+#   create-release:
+#     needs: build_and_package
+#     uses: hainguyenvan-cybozu/kep-ci/.github/workflows/create-release.yml@main
+#     permissions:
+#       contents: write
+#       actions: write
+#       issues: write
+#     with:
+#       version-package-path: "./packages/customization-deployment-request/package.json"
+#       artifact-pattern: "customization-request-and-deployment_v*"
+#       release-note-path: "RELEASE-NOTE.md"
+
+on:
+  workflow_call:
+    inputs:
+      version-package-path:
+        description: package.json whose version becomes the tag/name (vVERSION).
+        required: true
+        type: string
+      artifact-pattern:
+        description: Pattern of run artifacts to download and attach (e.g. "myrepo_v*").
+        required: true
+        type: string
+      release-note-path:
+        description: Path to the release note file (used as the release body if present).
+        required: false
+        type: string
+        default: "RELEASE-NOTE.md"
+      node-version:
+        description: Node.js version.
+        required: false
+        type: string
+        default: "24.14.1"
+
+jobs:
+  create-release:
+    name: Create pre-release on GitHub
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+      issues: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Determine version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('${{ inputs.version-package-path }}').version")
+          echo "APP_TOOL_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Download release artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: ${{ inputs.artifact-pattern }}
+          path: "release_assets"
+          merge-multiple: true
+
+      - name: Read release note
+        id: release-note
+        shell: bash
+        env:
+          RELEASE_NOTE_PATH: ${{ inputs.release-note-path }}
+        run: |
+          set -euo pipefail
+          # Read release notes if available, otherwise use fallback message
+          if [ -f "$RELEASE_NOTE_PATH" ]; then
+            {
+              echo "RELEASE_NOTE_CONTENT<<EOF"
+              cat "$RELEASE_NOTE_PATH"
+              echo
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            {
+              echo "RELEASE_NOTE_CONTENT<<EOF"
+              echo "No release note found at $RELEASE_NOTE_PATH"
+              echo
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          fi
+
+      # Provide artifact metadata for manual review before continuing the release.
+      - name: Summarize ZIP artifacts
+        id: zip_artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Generate size and SHA256 checksum for each ZIP file
+          if compgen -G "release_assets/*.zip" > /dev/null; then
+            {
+              echo "SUMMARY<<EOF"
+              for FILE in release_assets/*.zip; do
+                SIZE=$(du -h "$FILE" | cut -f1)
+                SHA=$(sha256sum "$FILE" | awk '{ print $1 }')
+                BASENAME=$(basename "$FILE")
+                echo "- \`$BASENAME\` (size: $SIZE, sha256: $SHA)"
+              done
+              echo "EOF"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "No ZIP artifacts found in release_assets" >&2
+            exit 1
+          fi
+
+      - name: Create GitHub pre-release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: "v${{ env.APP_TOOL_VERSION }}"
+          target_commitish: "${{ github.ref_name }}"
+          name: "v${{ env.APP_TOOL_VERSION }}"
+          body: |
+            ${{ steps.release-note.outputs.RELEASE_NOTE_CONTENT }}
+          generate_release_notes: false
+          draft: false
+          prerelease: true
+          files: |
+            release_assets/**/*.zip
