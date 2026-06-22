@@ -15,7 +15,10 @@ that every repo calls.
 | `.github/workflows/license-check.yml` | Reusable license check, single sequential job (order matters). |
 | `.github/workflows/check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared scripts. |
 | `.github/workflows/verify-release-base.yml` | Reusable guard: release branch must equal base-branch HEAD. |
-| `.github/workflows/create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. Build/collect stays per repo. |
+| `.github/workflows/build-and-package.yml` | Reusable build + package. Picks a build/collect bash script by `is-monorepo`, attaches LICENSE, uploads binary + source ZIPs. |
+| `.github/workflows/create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. |
+| `.github/scripts/build-release-monorepo.sh` | Build/collect for `packages/*` monorepos (KEP glob convention). |
+| `.github/scripts/build-release-single.sh` | Build/collect for a single-project repo (TEMPLATE — untested, adjust globs when a normal repo adopts it). |
 | `.github/scripts/` | Shared Node scripts (no npm deps) used by `check-before-releasing.yml`. Live here ONCE instead of being copied per repo. |
 | `.github/actions/setup-node-pnpm/` | Composite: install Node.js + pnpm at the KEP versions. Edit defaults here to bump every workflow. |
 | `.github/actions/takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |

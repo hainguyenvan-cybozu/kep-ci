@@ -1,0 +1,138 @@
+name: Build and package (reusable)
+
+# Reusable build + package step for auto-release. Builds the project, collects
+# the release files (via a bash script chosen by is-monorepo), attaches the
+# combined LICENSE artifact, and uploads the binary + source ZIPs.
+#
+# The repo-shaped part is ONE bash script in kep-ci:
+#   is-monorepo=true  -> .github/scripts/build-release-monorepo.sh
+#   is-monorepo=false -> .github/scripts/build-release-single.sh
+#
+# Caller example (auto-release.yml):
+#   build_and_package:
+#     needs: [verify-base, generate_release_file]
+#     uses: hainguyenvan-cybozu/kep-ci/.github/workflows/build-and-package.yml@main
+#     permissions:
+#       id-token: write
+#       contents: read
+#     with:
+#       is-monorepo: true
+#       version-package-path: "./packages/customization-deployment-request/package.json"
+#       artifact-name: "customization-request-and-deployment"
+
+on:
+  workflow_call:
+    inputs:
+      is-monorepo:
+        description: true -> build-release-monorepo.sh (packages/*), false -> build-release-single.sh.
+        required: false
+        type: boolean
+        default: true
+      version-package-path:
+        description: package.json whose version names the ZIPs (vVERSION).
+        required: true
+        type: string
+      artifact-name:
+        description: ZIP base name, e.g. "customization-request-and-deployment".
+        required: true
+        type: string
+      project-dir:
+        description: Project dir for a NON-monorepo (is-monorepo=false). Ignored for monorepos.
+        required: false
+        type: string
+        default: "."
+      node-version:
+        description: Node.js version.
+        required: false
+        type: string
+        default: "24.14.1"
+      pnpm-version:
+        description: pnpm version.
+        required: false
+        type: string
+        default: "10.28.0"
+      kep-ci-ref:
+        description: Which ref of kep-ci to read the build scripts from.
+        required: false
+        type: string
+        default: "main"
+
+jobs:
+  build-and-package:
+    name: Build and package release assets
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          # Check out the branch tip (not the triggering SHA) so the per-package
+          # LICENSE files committed earlier are included in the source ZIP.
+          ref: ${{ github.ref_name }}
+
+      - name: Checkout kep-ci scripts
+        uses: actions/checkout@v6
+        with:
+          repository: hainguyenvan-cybozu/kep-ci
+          ref: ${{ inputs.kep-ci-ref }}
+          path: .kep-ci
+
+      - name: Setup Node and pnpm
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node-pnpm@main
+        with:
+          node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
+
+      - name: Setup Takumi Guard
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
+
+      - name: Determine version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(node -p "require('${{ inputs.version-package-path }}').version")
+          echo "APP_TOOL_VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Build and collect release files
+        shell: bash
+        env:
+          APP_TOOL_VERSION: ${{ env.APP_TOOL_VERSION }}
+          PROJECT_DIR: ${{ inputs.project-dir }}
+        run: |
+          set -euo pipefail
+          if [ "${{ inputs.is-monorepo }}" = "true" ]; then
+            bash .kep-ci/.github/scripts/build-release-monorepo.sh
+          else
+            bash .kep-ci/.github/scripts/build-release-single.sh
+          fi
+
+      - name: Download combined LICENSE artifact
+        uses: actions/download-artifact@v8
+        with:
+          name: "LICENSE"
+          path: "dist-release"
+
+      - name: Create ZIP
+        run: zip -j "${{ inputs.artifact-name }}_v${APP_TOOL_VERSION}.zip" dist-release/*
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}_v${{ env.APP_TOOL_VERSION }}
+          path: ${{ inputs.artifact-name }}_v${{ env.APP_TOOL_VERSION }}.zip
+          if-no-files-found: error
+
+      - name: Create source ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd dist-src && zip -r "../${{ inputs.artifact-name }}_v${APP_TOOL_VERSION}_src.zip" .)
+
+      - name: Upload source artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.artifact-name }}_v${{ env.APP_TOOL_VERSION }}_src
+          path: ${{ inputs.artifact-name }}_v${{ env.APP_TOOL_VERSION }}_src.zip
+          if-no-files-found: error
