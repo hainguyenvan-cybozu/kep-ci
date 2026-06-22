@@ -30,7 +30,7 @@ on:
         required: true
         type: string
       check-common-prs:
-        description: When true, also run the KEP common-PRs check (app-analysis needs this).
+        description: When true, also run the KEP common-PRs check (Only KEP-1 and KEP-2 need it).
         required: false
         type: boolean
         default: false
