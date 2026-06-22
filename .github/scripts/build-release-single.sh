@@ -6,7 +6,12 @@
 # bundle naming is a guess based on the monorepo convention. Adjust the globs
 # below to match the real repo's release/ output when one adopts this.
 #
-# Convention assumed (project dir = $PROJECT_DIR, default "."):
+# For a normal (non-monorepo) KEP repo the project — including its package.json —
+# lives in a "plugin" or "customization" folder, NOT the repo root. So the caller
+# sets project-dir to that folder (e.g. project-dir: "plugin") and points
+# version-package-path at "./plugin/package.json".
+#
+# Convention assumed (project dir = $PROJECT_DIR, e.g. "plugin" or "customization"):
 #   - built bundles:  $PROJECT_DIR/release/*_v<VERSION>.js  (required, >=1)
 #   - built styles:   $PROJECT_DIR/release/*_v<VERSION>.css (optional)
 #   - sample config:  $PROJECT_DIR/*-configuration.js.sample (optional -> *-configuration.js)
@@ -15,7 +20,7 @@
 #   dist-release/  -> binary files for <name>_v<VERSION>.zip
 #   dist-src/      -> project source (no node_modules/dist/release) for the _src.zip
 #
-# Env: APP_TOOL_VERSION (required), PROJECT_DIR (optional, default ".").
+# Env: APP_TOOL_VERSION (required), PROJECT_DIR (required for single repos; default ".").
 set -euo pipefail
 
 : "${APP_TOOL_VERSION:?APP_TOOL_VERSION not set}"

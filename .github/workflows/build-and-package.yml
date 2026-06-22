@@ -37,7 +37,10 @@ on:
         required: true
         type: string
       project-dir:
-        description: Project dir for a NON-monorepo (is-monorepo=false). Ignored for monorepos.
+        description: >-
+          Project folder for a NON-monorepo (is-monorepo=false) — for KEP repos
+          this is "plugin" or "customization" (where package.json lives), not the
+          repo root. Ignored for monorepos.
         required: false
         type: string
         default: "."
