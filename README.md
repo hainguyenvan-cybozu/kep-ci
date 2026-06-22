@@ -17,6 +17,7 @@ that every repo calls.
 | `.github/workflows/verify-release-base.yml` | Reusable guard: release branch must equal base-branch HEAD. |
 | `.github/workflows/create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. Build/collect stays per repo. |
 | `.github/scripts/` | Shared Node scripts (no npm deps) used by `check-before-releasing.yml`. Live here ONCE instead of being copied per repo. |
+| `.github/actions/setup-node-pnpm/` | Composite: install Node.js + pnpm at the KEP versions. Edit defaults here to bump every workflow. |
 | `.github/actions/takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |
 
 ## How a repo uses it

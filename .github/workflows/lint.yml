@@ -62,20 +62,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
+      - name: Setup Node and pnpm
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node-pnpm@main
         with:
           node-version: ${{ inputs.node-version }}
+          pnpm-version: ${{ inputs.pnpm-version }}
 
       - name: Setup Takumi Guard
         uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
         with:
           working-directory: ${{ matrix.package }}
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6
-        with:
-          version: ${{ inputs.pnpm-version }}
 
       - name: Install packages
         run: pnpm install --frozen-lockfile
