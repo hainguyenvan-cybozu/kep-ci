@@ -44,16 +44,6 @@ on:
         required: false
         type: string
         default: "."
-      node-version:
-        description: Node.js version.
-        required: false
-        type: string
-        default: "24.14.1"
-      pnpm-version:
-        description: pnpm version.
-        required: false
-        type: string
-        default: "10.28.0"
       kep-ci-ref:
         description: Which ref of kep-ci to read the build scripts from.
         required: false
@@ -82,11 +72,11 @@ jobs:
           ref: ${{ inputs.kep-ci-ref }}
           path: .kep-ci
 
-      - name: Setup Node and pnpm
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node-pnpm@main
-        with:
-          node-version: ${{ inputs.node-version }}
-          pnpm-version: ${{ inputs.pnpm-version }}
+      - name: Setup Node
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
+
+      - name: Setup pnpm
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-pnpm@main
 
       - name: Setup Takumi Guard
         uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main

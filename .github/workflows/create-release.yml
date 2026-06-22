@@ -33,11 +33,6 @@ on:
         required: false
         type: string
         default: "RELEASE-NOTE.md"
-      node-version:
-        description: Node.js version.
-        required: false
-        type: string
-        default: "24.14.1"
 
 jobs:
   create-release:
@@ -51,10 +46,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ inputs.node-version }}
+      - name: Setup Node
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
 
       - name: Determine version
         shell: bash

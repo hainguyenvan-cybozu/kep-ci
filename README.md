@@ -20,7 +20,8 @@ that every repo calls.
 | `.github/scripts/build-release-monorepo.sh` | Build/collect for `packages/*` monorepos (KEP glob convention). |
 | `.github/scripts/build-release-single.sh` | Build/collect for a single-project repo (TEMPLATE — untested, adjust globs when a normal repo adopts it). |
 | `.github/scripts/` | Shared Node scripts (no npm deps) used by `check-before-releasing.yml`. Live here ONCE instead of being copied per repo. |
-| `.github/actions/setup-node-pnpm/` | Composite: install Node.js + pnpm at the KEP versions. Edit defaults here to bump every workflow. |
+| `.github/actions/setup-node/` | Composite: install Node.js at the KEP version. Edit the default here to bump every workflow. |
+| `.github/actions/setup-pnpm/` | Composite: install pnpm at the KEP version. Edit the default here to bump every workflow. |
 | `.github/actions/takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |
 
 ## How a repo uses it

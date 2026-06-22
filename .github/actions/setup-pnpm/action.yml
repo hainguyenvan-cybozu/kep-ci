@@ -1,0 +1,10 @@
+name: Setup pnpm
+description: Install pnpm at the version KEP repos use. The version is fixed here — callers cannot override it.
+
+runs:
+  using: composite
+  steps:
+    - name: Install pnpm
+      uses: pnpm/action-setup@v6
+      with:
+        version: "10.28.0"

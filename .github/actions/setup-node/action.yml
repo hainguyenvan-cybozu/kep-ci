@@ -1,0 +1,10 @@
+name: Setup Node
+description: Install Node.js at the version KEP repos use. The version is fixed here — callers cannot override it.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: "24.14.1"

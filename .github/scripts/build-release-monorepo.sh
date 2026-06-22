@@ -26,35 +26,50 @@ done
 
 # 2. Collect binary files into dist-release/
 mkdir -p dist-release
+shopt -s nullglob
 for PKG_DIR in packages/*/; do
   PKG=$(basename "$PKG_DIR")
+  RELEASE_DIR="packages/$PKG/release"
 
-  # Built JS bundle (required)
-  JS="packages/$PKG/release/${PKG}_v${APP_TOOL_VERSION}.js"
-  if [ ! -f "$JS" ]; then
-    echo "No built JS bundle found for $PKG at $JS"; exit 1
+  # The build must have produced a release/ folder with files in it.
+  # (-d check first so the ls -A doesn't run on a missing dir.)
+  if [ ! -d "$RELEASE_DIR" ] || [ -z "$(ls -A "$RELEASE_DIR")" ]; then
+    echo "Release folder missing or empty for $PKG: $RELEASE_DIR"; exit 1
   fi
-  cp "$JS" dist-release/
 
-  # Built CSS bundle (optional — only emitted when the package imports CSS)
-  CSS="packages/$PKG/release/${PKG}_v${APP_TOOL_VERSION}.css"
-  if [ -f "$CSS" ]; then
+  # Built JS bundles — copy every .js the package emitted, EXCEPT example.*
+  # templates (those are shipped with the prefix dropped, see below).
+  for JS in "$RELEASE_DIR"/*.js; do
+    [[ "$(basename "$JS")" == example.* ]] && continue
+    cp "$JS" dist-release/
+  done
+
+  # Built CSS bundles (optional) — same rule, skip example.* templates.
+  for CSS in "$RELEASE_DIR"/*.css; do
+    [[ "$(basename "$CSS")" == example.* ]] && continue
     cp "$CSS" dist-release/
-  fi
+  done
 
-  # Sample configuration, dropping the .sample suffix so it ships ready to edit.
-  SAMPLE="packages/$PKG/${PKG}-configuration.js.sample"
-  if [ -f "$SAMPLE" ]; then
-    cp "$SAMPLE" "dist-release/${PKG}-configuration.js"
-  fi
+  # Sample configs: ship every *.js.sample (top-level of the package),
+  # dropping the .sample suffix so it ships ready to edit.
+  for SAMPLE in "packages/$PKG"/*.js.sample; do
+    cp "$SAMPLE" "dist-release/$(basename "$SAMPLE" .sample)"
+  done
+
+  # Example templates in release/ (optional): ship every example.* file with the
+  # "example." prefix dropped, whatever the extension:
+  #   example.config.json                         -> config.json
+  #   example.monitoring_configuration_custom.js  -> monitoring_configuration_custom.js
+  for EX in "$RELEASE_DIR"/example.*; do
+    NAME=$(basename "$EX")
+    cp "$EX" "dist-release/${NAME#example.}"
+  done
 done
 
 # App-template ZIPs (kintone app-template exports) committed under release-assets/ (optional).
-shopt -s nullglob
-APP_TEMPLATES=(release-assets/*_app-template.zip)
-if [ ${#APP_TEMPLATES[@]} -gt 0 ]; then
-  cp "${APP_TEMPLATES[@]}" dist-release/
-fi
+for APP_TEMPLATE in release-assets/*_app-template.zip; do
+  cp "$APP_TEMPLATE" dist-release/
+done
 
 echo "Collected files:"
 ls -la dist-release

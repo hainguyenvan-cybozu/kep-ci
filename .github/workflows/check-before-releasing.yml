@@ -34,11 +34,6 @@ on:
         required: false
         type: boolean
         default: false
-      node-version:
-        description: Node.js version.
-        required: false
-        type: string
-        default: "24.14.1"
       kep-ci-ref:
         description: Which ref of kep-ci to read the shared scripts from.
         required: false
@@ -72,10 +67,8 @@ jobs:
           ref: ${{ inputs.kep-ci-ref }}
           path: .kep-ci
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ inputs.node-version }}
+      - name: Setup Node
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
 
       - name: Setup GitHub CLI
         if: ${{ inputs.check-common-prs }}

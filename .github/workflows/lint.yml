@@ -24,16 +24,6 @@ on:
         description: JSON array of { package, run_lint, run_css } objects. Each repo defines its own list.
         required: true
         type: string
-      node-version:
-        description: Node.js version.
-        required: false
-        type: string
-        default: "24.14.1"
-      pnpm-version:
-        description: pnpm version.
-        required: false
-        type: string
-        default: "10.28.0"
       max-parallel:
         description: Max matrix jobs to run at once.
         required: false
@@ -62,11 +52,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - name: Setup Node and pnpm
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node-pnpm@main
-        with:
-          node-version: ${{ inputs.node-version }}
-          pnpm-version: ${{ inputs.pnpm-version }}
+      - name: Setup Node
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
+
+      - name: Setup pnpm
+        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-pnpm@main
 
       - name: Setup Takumi Guard
         uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
