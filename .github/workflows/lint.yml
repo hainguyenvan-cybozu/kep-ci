@@ -13,8 +13,16 @@ name: Lint (reusable)
 #       with:
 #         packages: |
 #           [
-#             { "package": "packages/customization-deployment-request", "run_lint": true, "run_css": true },
-#             { "package": "packages/customization-template-master",     "run_lint": true, "run_css": true }
+#             {
+#               "package": "packages/customization-deployment-request",
+#               "run_lint": true,
+#               "run_css": true
+#             },
+#             {
+#               "package": "packages/customization-template-master",
+#               "run_lint": true,
+#               "run_css": true
+#             }
 #           ]
 
 on:

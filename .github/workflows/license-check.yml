@@ -19,8 +19,14 @@ name: License check (reusable)
 #       with:
 #         licenses: |
 #           [
-#             { "working_directory": "./packages/customization-deployment-request", "license_filename": "LICENSE-customization-deployment-request" },
-#             { "working_directory": "./packages/customization-template-master",     "license_filename": "LICENSE-customization-template-master", "trigger_license_combination": "true" }
+#             {
+#               "working_directory": "./packages/customization-deployment-request",
+#               "license_filename": "LICENSE-customization-deployment-request"
+#             },
+#             {
+#               "working_directory": "./packages/customization-template-master",
+#               "license_filename": "LICENSE-customization-template-master"
+#             }  
 #           ]
 
 on:
