@@ -4,8 +4,8 @@ Shared, reusable GitHub Actions CI for KEP repos. The same CI logic used to be
 copy-pasted into every repo and drifted out of sync. This repo holds **one copy**
 that every repo calls.
 
-> Status: testing on the user's own account first
-> (`hainguyenvan-cybozu/kep-ci`, public). Will be published to `Cybozu-SD` later.
+> Status: published in the `Cybozu-SD` org (`Cybozu-SD/kep-ci`). Callers use
+> `@main` for now; pin to a tag (`@v1`) once it is stable.
 
 ## What's here
 
@@ -58,7 +58,7 @@ on:
   push:
 jobs:
   lint:
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/lint.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/lint.yml@main
     permissions:
       id-token: write
       contents: read
@@ -79,7 +79,7 @@ on:
     branches: [main, develop]
 jobs:
   license-check:
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/license-check.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/license-check.yml@main
     permissions:
       id-token: write
       contents: write
@@ -102,7 +102,7 @@ on:
     branches: [main, develop]
 jobs:
   check:
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/check-before-releasing.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/check-before-releasing.yml@main
     permissions:
       contents: read
       actions: write
@@ -116,10 +116,9 @@ jobs:
       KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
 ```
 
-> Secrets are passed explicitly (not `inherit`): org secrets do not flow via
-> `inherit` to a reusable workflow that lives outside the org. Once kep-ci moves
-> into `Cybozu-SD`, `secrets: inherit` would also work — explicit still works and
-> is clearer.
+> Secrets are passed explicitly here. Now that kep-ci is inside `Cybozu-SD`,
+> `secrets: inherit` would also work; explicit passing still works and is clearer
+> about exactly which secrets the workflow needs.
 
 The shared scripts (`check-tasks-status.js`, `check-backlogs-status.js`, and
 `check-kep-common-prs.js` when `check-common-prs: true`) live in
@@ -143,7 +142,7 @@ jobs:
   # 1. release branch must equal main HEAD
   verify-base:
     if: ${{ github.event.created == true }}
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/verify-release-base.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/verify-release-base.yml@main
     with:
       base-branch: main
 
@@ -154,7 +153,7 @@ jobs:
     permissions:
       id-token: write
       contents: write
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/license-check.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/license-check.yml@main
     with:
       licenses: |
         [
@@ -166,7 +165,7 @@ jobs:
   build_and_package:
     needs: [verify-base, generate_release_file]
     if: ${{ success() }}
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/build-and-package.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/build-and-package.yml@main
     permissions:
       id-token: write
       contents: read
@@ -178,7 +177,7 @@ jobs:
   # 4. publish the GitHub pre-release from the uploaded artifacts
   create-release:
     needs: build_and_package
-    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/create-release.yml@main
+    uses: Cybozu-SD/kep-ci/.github/workflows/create-release.yml@main
     permissions:
       contents: write
       actions: write

@@ -7,7 +7,7 @@ name: Create release (reusable)
 # Caller example (last job of auto-release.yml):
 #   create-release:
 #     needs: build_and_package
-#     uses: hainguyenvan-cybozu/kep-ci/.github/workflows/create-release.yml@main
+#     uses: Cybozu-SD/kep-ci/.github/workflows/create-release.yml@main
 #     permissions:
 #       contents: write
 #       actions: write
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
 
       - name: Determine version
         shell: bash

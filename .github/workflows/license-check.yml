@@ -12,7 +12,7 @@ name: License check (reusable)
 # Caller example (.github/workflows/check-license.yml):
 #   jobs:
 #     license-check:
-#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/license-check.yml@main
+#       uses: Cybozu-SD/kep-ci/.github/workflows/license-check.yml@main
 #       permissions:
 #         id-token: write
 #         contents: write
@@ -44,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
+      - uses: Cybozu-SD/kep-ci/.github/actions/takumi-guard@main
 
       # Slots run in order inside this one job. Each slot is skipped when the
       # JSON array has no entry at that index, so repos with fewer packages just

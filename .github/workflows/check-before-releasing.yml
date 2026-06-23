@@ -12,7 +12,7 @@ name: Check before releasing (reusable)
 # Caller example (.github/workflows/check-before-releasing.yml):
 #   jobs:
 #     check:
-#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/check-before-releasing.yml@main
+#       uses: Cybozu-SD/kep-ci/.github/workflows/check-before-releasing.yml@main
 #       secrets: inherit
 #       permissions:
 #         contents: read
@@ -63,12 +63,12 @@ jobs:
       - name: Checkout kep-ci scripts
         uses: actions/checkout@v6
         with:
-          repository: hainguyenvan-cybozu/kep-ci
+          repository: Cybozu-SD/kep-ci
           ref: ${{ inputs.kep-ci-ref }}
           path: .kep-ci
 
       - name: Setup Node
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
 
       - name: Setup GitHub CLI
         if: ${{ inputs.check-common-prs }}
