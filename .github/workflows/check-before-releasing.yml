@@ -7,13 +7,14 @@ name: Check before releasing (reusable)
 #   1. the CALLER repo (so package.json and repo files are present, cwd = caller)
 #   2. this repo's scripts into ./.kep-ci (so `node .kep-ci/.github/scripts/X.js` works)
 #
-# Caller must pass `secrets: inherit` so the scripts get the org secrets/vars.
+# Caller must pass the secrets below so the scripts get the org secrets/vars.
+# kep-ci is in the same org now, so `secrets: inherit` also works; we pass them
+# explicitly to be clear about exactly which secrets the workflow needs.
 #
 # Caller example (.github/workflows/check-before-releasing.yml):
 #   jobs:
 #     check:
 #       uses: Cybozu-SD/kep-ci/.github/workflows/check-before-releasing.yml@main
-#       secrets: inherit
 #       permissions:
 #         contents: read
 #         actions: write
@@ -21,6 +22,10 @@ name: Check before releasing (reusable)
 #       with:
 #         version-package-path: "./packages/customization-deployment-request/package.json"
 #         check-common-prs: false   # app-analysis sets true
+#       secrets:
+#         KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
+#         KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
+#         KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
 
 on:
   workflow_call:
@@ -39,16 +44,6 @@ on:
         required: false
         type: string
         default: "main"
-    secrets:
-      # Declared explicitly (not `inherit`) so they cross the repo/org boundary:
-      # org secrets are resolved in the caller's context and passed in by value.
-      # `secrets: inherit` does NOT forward org secrets to a workflow outside the org.
-      KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN:
-        required: true
-      KEP_SSR_APP_API_TOKEN:
-        required: true
-      KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY:
-        required: true
 
 jobs:
   check:
