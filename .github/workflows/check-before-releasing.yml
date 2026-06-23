@@ -55,11 +55,26 @@ jobs:
         with:
           fetch-depth: 0
 
+      # One App token used twice below: to clone the INTERNAL kep-ci repo (the
+      # default GITHUB_TOKEN can't read another repo) and to query the project's
+      # backlogs. Scoped to both repos; the App needs Contents:read on kep-ci.
+      - name: Generate GitHub App token (read kep-ci + query backlogs)
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            kep-ci
+
       - name: Checkout kep-ci scripts
         uses: actions/checkout@v6
         with:
           repository: Cybozu-SD/kep-ci
           ref: ${{ inputs.kep-ci-ref }}
+          token: ${{ steps.app-token.outputs.token }}
           path: .kep-ci
 
       - name: Setup Node
@@ -101,13 +116,6 @@ jobs:
           KEP_SSR_APP_ID: ${{ vars.KEP_SSR_APP_ID }}
           KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
           KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
-
-      - name: Generate GitHub App Token For Querying Project's Backlogs
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
-          private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
 
       - name: Check Backlogs Status
         run: node .kep-ci/.github/scripts/check-backlogs-status.js
