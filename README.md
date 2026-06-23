@@ -109,7 +109,7 @@ jobs:
       pull-requests: write
     with:
       version-package-path: "./packages/customization-deployment-request/package.json"
-      check-common-prs: false   # app-analysis sets true
+      check-common-prs: false
     secrets:
       KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
       KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
