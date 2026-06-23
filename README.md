@@ -4,8 +4,13 @@ Shared, reusable GitHub Actions CI for KEP repos. The same CI logic used to be
 copy-pasted into every repo and drifted out of sync. This repo holds **one copy**
 that every repo calls.
 
-> Status: published in the `Cybozu-SD` org (`Cybozu-SD/kep-ci`). Callers use
-> `@main` for now; pin to a tag (`@v1`) once it is stable.
+> Status: in the `Cybozu-SD` org (`Cybozu-SD/kep-ci`). While KEP-7 CI is being
+> built, the live callers and the in-repo refs point at the feature branch
+> `@SSR-6111_Implement-CI-workflows-for-KEP7`. The examples below show `@main`
+> (the post-merge target); after merge, tag `@v1` and switch callers to it.
+>
+> kep-ci is an **INTERNAL** repo, so two things must be set up once — see
+> [Access & tokens](#access--tokens-internal-repo).
 
 ## What's here
 
@@ -15,9 +20,9 @@ that every repo calls.
 | --- | --- | --- |
 | `lint.yml` | Reusable lint (+ optional CSS format check), one matrix job per package. | `packages` (required), `max-parallel` (2), `continue-on-error` (true) |
 | `license-check.yml` | Reusable license check, single sequential job (order matters). | `licenses` (required, max 8) |
-| `check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared Node scripts. | `version-package-path` (required), `check-common-prs` (false), `kep-ci-ref` (main) + secrets |
+| `check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared Node scripts. | `version-package-path` (required), `check-common-prs` (false), `kep-ci-ref` (feature branch); caller passes `secrets: inherit` |
 | `verify-release-base.yml` | Reusable guard: release branch must equal base-branch HEAD. | `base-branch` (main) |
-| `build-and-package.yml` | Reusable build + package. Picks a build/collect bash script by `is-monorepo`, attaches LICENSE, uploads binary + source ZIPs. | `is-monorepo` (true), `version-package-path` (required), `artifact-name` (required), `project-dir` (.), `kep-ci-ref` (main) |
+| `build-and-package.yml` | Reusable build + package. Picks a build/collect bash script by `is-monorepo`, attaches LICENSE, uploads binary + source ZIPs. | `is-monorepo` (true), `version-package-path` (required), `artifact-name` (required), `project-dir` (.), `kep-ci-ref` (feature branch); secret `KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY` |
 | `create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. | `version-package-path` (required), `artifact-pattern` (required), `release-note-path` (RELEASE-NOTE.md) |
 
 ### Build scripts (`.github/scripts/`)
@@ -29,7 +34,7 @@ that every repo calls.
 
 ### Shared Node scripts (`.github/scripts/`, no npm deps)
 
-These live here ONCE instead of being copied per repo. `check-before-releasing.yml` checks out this repo into `.kep-ci/` at runtime and runs them.
+These live here ONCE instead of being copied per repo. `check-before-releasing.yml` (and `build-and-package.yml`) check this repo out into `.kep-ci/` at runtime and run them. Because kep-ci is INTERNAL, that checkout needs a token — see [Access & tokens](#access--tokens-internal-repo).
 
 | File | Purpose |
 | --- | --- |
@@ -49,6 +54,9 @@ These live here ONCE instead of being copied per repo. `check-before-releasing.y
 ## How a repo uses it
 
 A repo keeps a **thin caller** workflow that only sends its own package list.
+
+> The examples pin `@main` (post-merge target). Until KEP-7 CI merges, point
+> callers at `@SSR-6111_Implement-CI-workflows-for-KEP7` instead.
 
 ### Lint — `.github/workflows/commit.yml`
 
@@ -110,15 +118,14 @@ jobs:
     with:
       version-package-path: "./packages/customization-deployment-request/package.json"
       check-common-prs: false
-    secrets:
-      KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
-      KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
-      KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
+    secrets: inherit
 ```
 
-> Secrets are passed explicitly here. Now that kep-ci is inside `Cybozu-SD`,
-> `secrets: inherit` would also work; explicit passing still works and is clearer
-> about exactly which secrets the workflow needs.
+> `secrets: inherit` forwards all the caller's org secrets (kintone API tokens +
+> the App private key) to the reusable in one line. This is required: GitHub
+> never lets a reusable workflow read secrets the caller hasn't passed, so there
+> is no "zero-pass" option. You can list the secrets explicitly instead, but
+> `inherit` is the least to maintain.
 
 The shared scripts (`check-tasks-status.js`, `check-backlogs-status.js`, and
 `check-kep-common-prs.js` when `check-common-prs: true`) live in
@@ -173,6 +180,7 @@ jobs:
       is-monorepo: true
       version-package-path: "./packages/customization-deployment-request/package.json"
       artifact-name: "customization-request-and-deployment"
+    secrets: inherit   # for the App key that clones internal kep-ci
 
   # 4. publish the GitHub pre-release from the uploaded artifacts
   create-release:
@@ -197,11 +205,33 @@ and a source `<artifact-name>_v<VERSION>_src.zip`. For a non-monorepo repo set
 > pipeline but drop `verify-base` + `create-release`, and add a job that downloads
 > the artifacts and checks them. See `auto-release-test.yml` in the caller repo.
 
+## Access & tokens (internal repo)
+
+kep-ci is **INTERNAL**, so two one-time setups are needed (a public repo wouldn't
+need either):
+
+1. **Reusable-workflow / action access.** kep-ci → Settings → Actions → General →
+   *Access* → "Accessible from repositories in the Cybozu-SD organization". Without
+   this, callers fail to even resolve the workflow ("workflow was not found").
+
+2. **A token to clone kep-ci.** `check-before-releasing.yml` and
+   `build-and-package.yml` check this repo out at runtime to run the scripts. The
+   caller's default `GITHUB_TOKEN` can't read another repo, so these workflows mint
+   a short-lived **GitHub App token** (`actions/create-github-app-token`, App
+   `KEP_RELEASE_AUTOMATION`) and use it for the checkout. For this to work the App
+   must have **Contents: Read** on kep-ci (Org → GitHub Apps → KEP_RELEASE_AUTOMATION
+   → Repository access → add `kep-ci`). The caller supplies the App private key via
+   `secrets: inherit`; the client-id comes from `vars.KEP_RELEASE_AUTOMATION_APP_ID`.
+
+> `lint.yml`, `license-check.yml`, `verify-release-base.yml` and `create-release.yml`
+> do NOT clone kep-ci, so they need only setup #1, not a token.
+
 ## Versioning
 
-- Callers should pin to a tag (`@v1`) once this is stable.
-- During testing, callers use `@main`.
-- Actions inside this repo are pinned to `@main` for now.
+- In-repo refs (`uses:` to kep-ci's own actions, the `kep-ci-ref` input defaults)
+  currently point at the feature branch `SSR-6111_Implement-CI-workflows-for-KEP7`.
+- After KEP-7 CI merges to `main`: bump those in-repo refs and every caller
+  `@SSR-6111_…` to `@main`, then tag `@v1` and move callers to `@v1`.
 
 ## Limits
 
