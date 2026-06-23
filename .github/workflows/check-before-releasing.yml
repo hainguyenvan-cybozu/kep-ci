@@ -14,7 +14,7 @@ name: Check before releasing (reusable)
 # Caller example (.github/workflows/check-before-releasing.yml):
 #   jobs:
 #     check:
-#       uses: Cybozu-SD/kep-ci/.github/workflows/check-before-releasing.yml@main
+#       uses: Cybozu-SD/kep-ci/.github/workflows/check-before-releasing.yml@SSR-6111_Implement-CI-workflows-for-KEP7
 #       permissions:
 #         contents: read
 #         actions: write
@@ -43,7 +43,7 @@ on:
         description: Which ref of kep-ci to read the shared scripts from.
         required: false
         type: string
-        default: "main"
+        default: "SSR-6111_Implement-CI-workflows-for-KEP7"
 
 jobs:
   check:
@@ -63,7 +63,7 @@ jobs:
           path: .kep-ci
 
       - name: Setup Node
-        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@SSR-6111_Implement-CI-workflows-for-KEP7
 
       - name: Setup GitHub CLI
         if: ${{ inputs.check-common-prs }}

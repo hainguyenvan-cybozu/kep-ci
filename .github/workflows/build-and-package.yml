@@ -11,7 +11,7 @@ name: Build and package (reusable)
 # Caller example (auto-release.yml):
 #   build_and_package:
 #     needs: [verify-base, generate_release_file]
-#     uses: Cybozu-SD/kep-ci/.github/workflows/build-and-package.yml@main
+#     uses: Cybozu-SD/kep-ci/.github/workflows/build-and-package.yml@SSR-6111_Implement-CI-workflows-for-KEP7
 #     permissions:
 #       id-token: write
 #       contents: read
@@ -48,7 +48,7 @@ on:
         description: Which ref of kep-ci to read the build scripts from.
         required: false
         type: string
-        default: "main"
+        default: "SSR-6111_Implement-CI-workflows-for-KEP7"
 
 jobs:
   build-and-package:
@@ -73,13 +73,13 @@ jobs:
           path: .kep-ci
 
       - name: Setup Node
-        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@SSR-6111_Implement-CI-workflows-for-KEP7
 
       - name: Setup pnpm
-        uses: Cybozu-SD/kep-ci/.github/actions/setup-pnpm@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-pnpm@SSR-6111_Implement-CI-workflows-for-KEP7
 
       - name: Setup Takumi Guard
-        uses: Cybozu-SD/kep-ci/.github/actions/takumi-guard@main
+        uses: Cybozu-SD/kep-ci/.github/actions/takumi-guard@SSR-6111_Implement-CI-workflows-for-KEP7
 
       - name: Determine version
         shell: bash

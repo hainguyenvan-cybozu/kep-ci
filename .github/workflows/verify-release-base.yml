@@ -7,7 +7,7 @@ name: Verify release base (reusable)
 #   jobs:
 #     verify-base:
 #       if: ${{ github.event.created == true }}
-#       uses: Cybozu-SD/kep-ci/.github/workflows/verify-release-base.yml@main
+#       uses: Cybozu-SD/kep-ci/.github/workflows/verify-release-base.yml@SSR-6111_Implement-CI-workflows-for-KEP7
 #       with:
 #         base-branch: main
 
