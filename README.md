@@ -9,20 +9,42 @@ that every repo calls.
 
 ## What's here
 
+### Reusable workflows (`.github/workflows/`)
+
+| File | Purpose | Key inputs |
+| --- | --- | --- |
+| `lint.yml` | Reusable lint (+ optional CSS format check), one matrix job per package. | `packages` (required), `max-parallel` (2), `continue-on-error` (true) |
+| `license-check.yml` | Reusable license check, single sequential job (order matters). | `licenses` (required, max 8) |
+| `check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared Node scripts. | `version-package-path` (required), `check-common-prs` (false), `kep-ci-ref` (main) + secrets |
+| `verify-release-base.yml` | Reusable guard: release branch must equal base-branch HEAD. | `base-branch` (main) |
+| `build-and-package.yml` | Reusable build + package. Picks a build/collect bash script by `is-monorepo`, attaches LICENSE, uploads binary + source ZIPs. | `is-monorepo` (true), `version-package-path` (required), `artifact-name` (required), `project-dir` (.), `kep-ci-ref` (main) |
+| `create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. | `version-package-path` (required), `artifact-pattern` (required), `release-note-path` (RELEASE-NOTE.md) |
+
+### Build scripts (`.github/scripts/`)
+
 | File | Purpose |
 | --- | --- |
-| `.github/workflows/lint.yml` | Reusable lint (+ optional CSS format check), one matrix job per package. |
-| `.github/workflows/license-check.yml` | Reusable license check, single sequential job (order matters). |
-| `.github/workflows/check-before-releasing.yml` | Reusable pre-release check (tasks/backlogs status, optional common-PRs). Runs the shared scripts. |
-| `.github/workflows/verify-release-base.yml` | Reusable guard: release branch must equal base-branch HEAD. |
-| `.github/workflows/build-and-package.yml` | Reusable build + package. Picks a build/collect bash script by `is-monorepo`, attaches LICENSE, uploads binary + source ZIPs. |
-| `.github/workflows/create-release.yml` | Reusable final step: download build artifacts + publish GitHub pre-release. |
-| `.github/scripts/build-release-monorepo.sh` | Build/collect for `packages/*` monorepos (KEP glob convention). |
-| `.github/scripts/build-release-single.sh` | Build/collect for a single-project repo (TEMPLATE — untested, adjust globs when a normal repo adopts it). |
-| `.github/scripts/` | Shared Node scripts (no npm deps) used by `check-before-releasing.yml`. Live here ONCE instead of being copied per repo. |
-| `.github/actions/setup-node/` | Composite: install Node.js at the KEP version. Edit the default here to bump every workflow. |
-| `.github/actions/setup-pnpm/` | Composite: install pnpm at the KEP version. Edit the default here to bump every workflow. |
-| `.github/actions/takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |
+| `build-release-monorepo.sh` | Build/collect for `packages/*` monorepos (KEP glob convention). Used when `is-monorepo: true`. |
+| `build-release-single.sh` | Build/collect for a single-project repo. Used when `is-monorepo: false`. TEMPLATE — untested; adjust globs when a normal repo adopts it. |
+
+### Shared Node scripts (`.github/scripts/`, no npm deps)
+
+These live here ONCE instead of being copied per repo. `check-before-releasing.yml` checks out this repo into `.kep-ci/` at runtime and runs them.
+
+| File | Purpose |
+| --- | --- |
+| `check-tasks-status.js` | Check SSR task status before releasing. |
+| `check-backlogs-status.js` | Check project backlog status before releasing. |
+| `check-kep-common-prs.js` | Check KEP common PRs (only when `check-common-prs: true`). |
+| `check-license-versions.js` | License-version check. Present but not wired into a reusable workflow yet (used by app-analysis's extra job). |
+
+### Composite actions (`.github/actions/`)
+
+| File | Purpose |
+| --- | --- |
+| `setup-node/` | Install Node.js at the KEP version (hardcoded, no input). Edit the version here to bump every workflow. |
+| `setup-pnpm/` | Install pnpm at the KEP version (hardcoded, no input). Edit the version here to bump every workflow. |
+| `takumi-guard/` | Composite wrapper for `Cybozu-SD/takumi-guard-action`. Edit the ref here to update every workflow at once. |
 
 ## How a repo uses it
 
@@ -99,10 +121,82 @@ jobs:
 > into `Cybozu-SD`, `secrets: inherit` would also work — explicit still works and
 > is clearer.
 
-The shared scripts (`check-tasks-status.js`, `check-backlogs-status.js`,
-`check-kep-common-prs.js`, `check-license-versions.js`) live in
+The shared scripts (`check-tasks-status.js`, `check-backlogs-status.js`, and
+`check-kep-common-prs.js` when `check-common-prs: true`) live in
 `.github/scripts/` here. The workflow checks out this repo into `.kep-ci/` at
 runtime to run them, so caller repos can delete their own copies.
+
+### Release — `.github/workflows/auto-release.yml`
+
+The full release is 4 reusable jobs chained together. The caller only passes the
+per-repo paths/names; all build/zip/publish logic lives in kep-ci.
+
+```yaml
+name: Auto release
+on:
+  push:
+    branches: [release]
+permissions:
+  contents: read
+  actions: write
+jobs:
+  # 1. release branch must equal main HEAD
+  verify-base:
+    if: ${{ github.event.created == true }}
+    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/verify-release-base.yml@main
+    with:
+      base-branch: main
+
+  # 2. same license flow as check-license -> uploads the "LICENSE" artifact
+  generate_release_file:
+    needs: verify-base
+    if: ${{ success() }}
+    permissions:
+      id-token: write
+      contents: write
+    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/license-check.yml@main
+    with:
+      licenses: |
+        [
+          { "working_directory": "./packages/customization-deployment-request", "license_filename": "LICENSE-customization-deployment-request" },
+          { "working_directory": "./packages/customization-template-master",     "license_filename": "LICENSE-customization-template-master", "trigger_license_combination": "true" }
+        ]
+
+  # 3. build + collect (monorepo glob) + attach LICENSE + upload binary/source ZIPs
+  build_and_package:
+    needs: [verify-base, generate_release_file]
+    if: ${{ success() }}
+    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/build-and-package.yml@main
+    permissions:
+      id-token: write
+      contents: read
+    with:
+      is-monorepo: true
+      version-package-path: "./packages/customization-deployment-request/package.json"
+      artifact-name: "customization-request-and-deployment"
+
+  # 4. publish the GitHub pre-release from the uploaded artifacts
+  create-release:
+    needs: build_and_package
+    uses: hainguyenvan-cybozu/kep-ci/.github/workflows/create-release.yml@main
+    permissions:
+      contents: write
+      actions: write
+      issues: write
+    with:
+      version-package-path: "./packages/customization-deployment-request/package.json"
+      artifact-pattern: "customization-request-and-deployment_v*"
+      release-note-path: "release-assets/RELEASE-NOTE.md"
+```
+
+`build-and-package.yml` uploads two ZIPs: a binary `<artifact-name>_v<VERSION>.zip`
+and a source `<artifact-name>_v<VERSION>_src.zip`. For a non-monorepo repo set
+`is-monorepo: false` and `project-dir` to the folder holding `package.json`
+(e.g. `plugin` or `customization`).
+
+> Tip: to verify the built ZIP contents WITHOUT publishing a release, copy this
+> pipeline but drop `verify-base` + `create-release`, and add a job that downloads
+> the artifacts and checks them. See `auto-release-test.yml` in the caller repo.
 
 ## Versioning
 
