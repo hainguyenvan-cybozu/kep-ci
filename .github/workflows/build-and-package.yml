@@ -66,9 +66,9 @@ jobs:
           # LICENSE files committed earlier are included in the source ZIP.
           ref: ${{ github.ref_name }}
 
-      # One App token used twice below: to clone the INTERNAL kep-ci repo (the
-      # default GITHUB_TOKEN can't read another repo) and to query the project's
-      # backlogs. Scoped to both repos; the App needs Contents:read on kep-ci.
+      # App token used once below, only to clone the INTERNAL kep-ci repo (the
+      # caller's default GITHUB_TOKEN can't read another repo). Scoped to kep-ci
+      # only; the App needs Contents:read on kep-ci.
       - name: Generate GitHub App token (read kep-ci)
         id: app-token
         uses: actions/create-github-app-token@v3
@@ -76,9 +76,7 @@ jobs:
           client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
           private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
           owner: ${{ github.repository_owner }}
-          repositories: |
-            ${{ github.event.repository.name }}
-            kep-ci
+          repositories: kep-ci
 
       - name: Checkout kep-ci scripts
         uses: actions/checkout@v6
@@ -124,7 +122,13 @@ jobs:
           path: "dist-release"
 
       - name: Create ZIP
-        run: zip -j "${{ inputs.artifact-name }}_v${APP_TOOL_VERSION}.zip" dist-release/*
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d dist-release ] || [ -z "$(ls -A dist-release)" ]; then
+            echo "dist-release is missing or empty — the build produced no files"; exit 1
+          fi
+          zip -j "${{ inputs.artifact-name }}_v${APP_TOOL_VERSION}.zip" dist-release/*
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

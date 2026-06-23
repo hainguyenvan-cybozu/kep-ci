@@ -77,15 +77,12 @@ jobs:
       - name: Setup Node
         uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
 
-      - name: Setup GitHub CLI
-        if: ${{ inputs.check-common-prs }}
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-
       - name: Check KEP common pull requests
         if: ${{ inputs.check-common-prs }}
         run: node .kep-ci/.github/scripts/check-kep-common-prs.js
         env:
+          # gh reads GH_TOKEN automatically — no `gh auth login` step needed.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_OWNER: ${{ github.repository_owner }}
 
