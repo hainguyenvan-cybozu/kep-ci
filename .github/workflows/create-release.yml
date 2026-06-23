@@ -60,7 +60,7 @@ jobs:
         uses: actions/download-artifact@v8
         with:
           pattern: ${{ inputs.artifact-pattern }}
-          path: "release_assets"
+          path: "release-assets"
           merge-multiple: true
 
       - name: Read release note
@@ -94,10 +94,10 @@ jobs:
         run: |
           set -euo pipefail
           # Generate size and SHA256 checksum for each ZIP file
-          if compgen -G "release_assets/*.zip" > /dev/null; then
+          if compgen -G "release-assets/*.zip" > /dev/null; then
             {
               echo "SUMMARY<<EOF"
-              for FILE in release_assets/*.zip; do
+              for FILE in release-assets/*.zip; do
                 SIZE=$(du -h "$FILE" | cut -f1)
                 SHA=$(sha256sum "$FILE" | awk '{ print $1 }')
                 BASENAME=$(basename "$FILE")
@@ -106,7 +106,7 @@ jobs:
               echo "EOF"
             } >> "$GITHUB_OUTPUT"
           else
-            echo "No ZIP artifacts found in release_assets" >&2
+            echo "No ZIP artifacts found in release-assets" >&2
             exit 1
           fi
 
@@ -122,4 +122,4 @@ jobs:
           draft: false
           prerelease: true
           files: |
-            release_assets/**/*.zip
+            release-assets/**/*.zip
