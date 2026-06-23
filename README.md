@@ -6,7 +6,7 @@ that every repo calls.
 
 > Status: in the `Cybozu-SD` org (`Cybozu-SD/kep-ci`). While KEP-7 CI is being
 > built, the live callers and the in-repo refs point at the feature branch
-> `@SSR-6111_Implement-CI-workflows-for-KEP7`. The examples below show `@main`
+> `@main`. The examples below show `@main`
 > (the post-merge target); after merge, tag `@v1` and switch callers to it.
 >
 > kep-ci is an **INTERNAL** repo, so two things must be set up once — see
@@ -56,7 +56,7 @@ These live here ONCE instead of being copied per repo. `check-before-releasing.y
 A repo keeps a **thin caller** workflow that only sends its own package list.
 
 > The examples pin `@main` (post-merge target). Until KEP-7 CI merges, point
-> callers at `@SSR-6111_Implement-CI-workflows-for-KEP7` instead.
+> callers at `@main` instead.
 
 ### Lint — `.github/workflows/commit.yml`
 
@@ -73,8 +73,16 @@ jobs:
     with:
       packages: |
         [
-          { "package": "packages/customization-deployment-request", "run_lint": true, "run_css": true },
-          { "package": "packages/customization-template-master",     "run_lint": true, "run_css": true }
+          {
+            "package": "packages/customization-deployment-request",
+            "run_lint": true,
+            "run_css": true
+          },
+          {
+            "package": "packages/customization-template-master",
+            "run_lint": true,
+            "run_css": true
+          }
         ]
 ```
 
@@ -94,8 +102,14 @@ jobs:
     with:
       licenses: |
         [
-          { "working_directory": "./packages/customization-deployment-request", "license_filename": "LICENSE-customization-deployment-request" },
-          { "working_directory": "./packages/customization-template-master",     "license_filename": "LICENSE-customization-template-master", "trigger_license_combination": "true" }
+          {
+            "working_directory": "./packages/customization-deployment-request",
+            "license_filename": "LICENSE-customization-deployment-request"
+          },
+          {
+            "working_directory": "./packages/customization-template-master",
+            "license_filename": "LICENSE-customization-template-master"
+          }
         ]
 ```
 
@@ -164,8 +178,15 @@ jobs:
     with:
       licenses: |
         [
-          { "working_directory": "./packages/customization-deployment-request", "license_filename": "LICENSE-customization-deployment-request" },
-          { "working_directory": "./packages/customization-template-master",     "license_filename": "LICENSE-customization-template-master", "trigger_license_combination": "true" }
+          {
+            "working_directory": "./packages/customization-deployment-request",
+            "license_filename": "LICENSE-customization-deployment-request"
+          },
+          {
+            "working_directory": "./packages/customization-template-master",
+            "license_filename": "LICENSE-customization-template-master",
+            "trigger_license_combination": "true"
+          }
         ]
 
   # 3. build + collect (monorepo glob) + attach LICENSE + upload binary/source ZIPs
@@ -225,13 +246,6 @@ need either):
 
 > `lint.yml`, `license-check.yml`, `verify-release-base.yml` and `create-release.yml`
 > do NOT clone kep-ci, so they need only setup #1, not a token.
-
-## Versioning
-
-- In-repo refs (`uses:` to kep-ci's own actions, the `kep-ci-ref` input defaults)
-  currently point at the feature branch `SSR-6111_Implement-CI-workflows-for-KEP7`.
-- After KEP-7 CI merges to `main`: bump those in-repo refs and every caller
-  `@SSR-6111_…` to `@main`, then tag `@v1` and move callers to `@v1`.
 
 ## Limits
 
