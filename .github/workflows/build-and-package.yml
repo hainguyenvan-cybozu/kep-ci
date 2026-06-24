@@ -11,7 +11,7 @@ name: Build and package (reusable)
 # Caller example (auto-release.yml):
 #   build_and_package:
 #     needs: [verify-base, generate_release_file]
-#     uses: hainguyenvan-cybozu/kep-ci/.github/workflows/build-and-package.yml@main
+#     uses: Cybozu-SD/kep-ci/.github/workflows/build-and-package.yml@main
 #     permissions:
 #       id-token: write
 #       contents: read
@@ -19,6 +19,7 @@ name: Build and package (reusable)
 #       is-monorepo: true
 #       version-package-path: "./packages/customization-deployment-request/package.json"
 #       artifact-name: "customization-request-and-deployment"
+#     secrets: inherit
 
 on:
   workflow_call:
@@ -65,21 +66,34 @@ jobs:
           # LICENSE files committed earlier are included in the source ZIP.
           ref: ${{ github.ref_name }}
 
+      # App token used once below, only to clone the INTERNAL kep-ci repo (the
+      # caller's default GITHUB_TOKEN can't read another repo). Scoped to kep-ci
+      # only; the App needs Contents:read on kep-ci.
+      - name: Generate GitHub App token (read kep-ci)
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: kep-ci
+
       - name: Checkout kep-ci scripts
         uses: actions/checkout@v6
         with:
-          repository: hainguyenvan-cybozu/kep-ci
+          repository: Cybozu-SD/kep-ci
           ref: ${{ inputs.kep-ci-ref }}
+          token: ${{ steps.app-token.outputs.token }}
           path: .kep-ci
 
       - name: Setup Node
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
 
       - name: Setup pnpm
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-pnpm@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-pnpm@main
 
       - name: Setup Takumi Guard
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/takumi-guard@main
+        uses: Cybozu-SD/kep-ci/.github/actions/takumi-guard@main
 
       - name: Determine version
         shell: bash
@@ -108,7 +122,13 @@ jobs:
           path: "dist-release"
 
       - name: Create ZIP
-        run: zip -j "${{ inputs.artifact-name }}_v${APP_TOOL_VERSION}.zip" dist-release/*
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ ! -d dist-release ] || [ -z "$(ls -A dist-release)" ]; then
+            echo "dist-release is missing or empty — the build produced no files"; exit 1
+          fi
+          zip -j "${{ inputs.artifact-name }}_v${APP_TOOL_VERSION}.zip" dist-release/*
 
       - name: Upload artifact
         uses: actions/upload-artifact@v7

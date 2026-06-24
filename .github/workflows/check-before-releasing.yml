@@ -7,13 +7,14 @@ name: Check before releasing (reusable)
 #   1. the CALLER repo (so package.json and repo files are present, cwd = caller)
 #   2. this repo's scripts into ./.kep-ci (so `node .kep-ci/.github/scripts/X.js` works)
 #
-# Caller must pass `secrets: inherit` so the scripts get the org secrets/vars.
+# Caller must pass the secrets below so the scripts get the org secrets/vars.
+# kep-ci is in the same org now, so `secrets: inherit` also works; we pass them
+# explicitly to be clear about exactly which secrets the workflow needs.
 #
 # Caller example (.github/workflows/check-before-releasing.yml):
 #   jobs:
 #     check:
-#       uses: hainguyenvan-cybozu/kep-ci/.github/workflows/check-before-releasing.yml@main
-#       secrets: inherit
+#       uses: Cybozu-SD/kep-ci/.github/workflows/check-before-releasing.yml@main
 #       permissions:
 #         contents: read
 #         actions: write
@@ -21,6 +22,7 @@ name: Check before releasing (reusable)
 #       with:
 #         version-package-path: "./packages/customization-deployment-request/package.json"
 #         check-common-prs: false   # app-analysis sets true
+#       secrets: inherit
 
 on:
   workflow_call:
@@ -39,16 +41,6 @@ on:
         required: false
         type: string
         default: "main"
-    secrets:
-      # Declared explicitly (not `inherit`) so they cross the repo/org boundary:
-      # org secrets are resolved in the caller's context and passed in by value.
-      # `secrets: inherit` does NOT forward org secrets to a workflow outside the org.
-      KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN:
-        required: true
-      KEP_SSR_APP_API_TOKEN:
-        required: true
-      KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY:
-        required: true
 
 jobs:
   check:
@@ -60,25 +52,37 @@ jobs:
         with:
           fetch-depth: 0
 
+      # One App token used twice below: to clone the INTERNAL kep-ci repo (the
+      # default GITHUB_TOKEN can't read another repo) and to query the project's
+      # backlogs. Scoped to both repos; the App needs Contents:read on kep-ci.
+      - name: Generate GitHub App token (read kep-ci + query backlogs)
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
+          private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: |
+            ${{ github.event.repository.name }}
+            kep-ci
+
       - name: Checkout kep-ci scripts
         uses: actions/checkout@v6
         with:
-          repository: hainguyenvan-cybozu/kep-ci
+          repository: Cybozu-SD/kep-ci
           ref: ${{ inputs.kep-ci-ref }}
+          token: ${{ steps.app-token.outputs.token }}
           path: .kep-ci
 
       - name: Setup Node
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
-
-      - name: Setup GitHub CLI
-        if: ${{ inputs.check-common-prs }}
-        run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
 
       - name: Check KEP common pull requests
         if: ${{ inputs.check-common-prs }}
         run: node .kep-ci/.github/scripts/check-kep-common-prs.js
         env:
+          # gh reads GH_TOKEN automatically — no `gh auth login` step needed.
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           REPO_OWNER: ${{ github.repository_owner }}
 
@@ -106,13 +110,6 @@ jobs:
           KEP_SSR_APP_ID: ${{ vars.KEP_SSR_APP_ID }}
           KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN: ${{ secrets.KEP_PLUGINS_MANAGEMENT_APP_API_TOKEN }}
           KEP_SSR_APP_API_TOKEN: ${{ secrets.KEP_SSR_APP_API_TOKEN }}
-
-      - name: Generate GitHub App Token For Querying Project's Backlogs
-        id: app-token
-        uses: actions/create-github-app-token@v3
-        with:
-          client-id: ${{ vars.KEP_RELEASE_AUTOMATION_APP_ID }}
-          private-key: ${{ secrets.KEP_RELEASE_AUTOMATION_APP_PRIVATE_KEY }}
 
       - name: Check Backlogs Status
         run: node .kep-ci/.github/scripts/check-backlogs-status.js

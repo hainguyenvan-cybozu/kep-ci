@@ -7,7 +7,7 @@ name: Create release (reusable)
 # Caller example (last job of auto-release.yml):
 #   create-release:
 #     needs: build_and_package
-#     uses: hainguyenvan-cybozu/kep-ci/.github/workflows/create-release.yml@main
+#     uses: Cybozu-SD/kep-ci/.github/workflows/create-release.yml@main
 #     permissions:
 #       contents: write
 #       actions: write
@@ -15,7 +15,7 @@ name: Create release (reusable)
 #     with:
 #       version-package-path: "./packages/customization-deployment-request/package.json"
 #       artifact-pattern: "customization-request-and-deployment_v*"
-#       release-note-path: "RELEASE-NOTE.md"
+#       release-note-path: "release-assets/RELEASE-NOTE.md"
 
 on:
   workflow_call:
@@ -47,7 +47,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Setup Node
-        uses: hainguyenvan-cybozu/kep-ci/.github/actions/setup-node@main
+        uses: Cybozu-SD/kep-ci/.github/actions/setup-node@main
 
       - name: Determine version
         shell: bash
